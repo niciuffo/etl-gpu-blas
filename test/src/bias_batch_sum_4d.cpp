@@ -44,7 +44,7 @@ TEST_CASE("bias_batch_sum_4d/s/0", "[float][bias_batch_sum]") {
 
     cuda_check(cudaMemcpy(x_gpu, x_cpu, SIZE * sizeof(float), cudaMemcpyHostToDevice));
 
-    egblas_sbias_batch_sum_4d(0, D0, D1, S0, S1, x_gpu, 1, y_gpu, 1);
+    egblas_sbias_batch_sum_4d(D0, D1, S0, S1, x_gpu, y_gpu, 1);
 
     cuda_check(cudaMemcpy(y_cpu, y_gpu, D1 * sizeof(float), cudaMemcpyDeviceToHost));
 
