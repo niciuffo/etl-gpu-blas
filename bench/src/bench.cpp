@@ -1145,6 +1145,128 @@ void bench_bias_batch_mean(){
     std::cout << std::endl;
 }
 
+void bench_cudnn_bias_batch_sum_4d(size_t D0, size_t D1, size_t D2, size_t D3, size_t repeat = 100) {
+    const size_t SIZE = D0 * D1 * D2 * D3;
+
+    auto* x_cpu = prepare_cpu(SIZE, 2.0f);
+    auto* y_cpu = prepare_cpu(D1, 3.0f);
+
+    auto* x_gpu = prepare_gpu(SIZE, x_cpu);
+    auto* y_gpu = prepare_gpu(D1, y_cpu);
+
+    cudnnHandle_t handle;
+    cudnnCreate(&handle);
+
+    cudnnTensorDescriptor_t x_tensor;
+    cudnn_check(cudnnCreateTensorDescriptor(&x_tensor));
+    cudnn_check(cudnnSetTensor4dDescriptor(x_tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, D0, D1, D2, D3));
+
+    cudnnTensorDescriptor_t y_tensor;
+    cudnn_check(cudnnCreateTensorDescriptor(&y_tensor));
+    cudnn_check(cudnnSetTensor4dDescriptor(y_tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, D1, 1, 1));
+
+    float alpha = 1.0f;
+    float beta = 0.0f;
+
+    cudnn_check(cudnnConvolutionBackwardBias(handle, &alpha, x_tensor, x_gpu, &beta, y_tensor, y_gpu));
+
+    auto t0 = timer::now();
+
+    for(size_t i = 0; i < repeat; ++i){
+        cudnn_check(cudnnConvolutionBackwardBias(handle, &alpha, x_tensor, x_gpu, &beta, y_tensor, y_gpu));
+    }
+
+    report("cudnn_bias_batch_sum_4d", t0, repeat, SIZE);
+
+    cuda_check(cudaMemcpy(y_cpu, y_gpu, D1 * sizeof(float), cudaMemcpyDeviceToHost));
+
+    release(x_cpu, x_gpu);
+    release(y_cpu, y_gpu);
+
+    cudnn_check(cudnnDestroyTensorDescriptor(x_tensor));
+    cudnn_check(cudnnDestroyTensorDescriptor(y_tensor));
+
+    cudnnDestroy(handle);
+}
+
+void bench_cudnn_bias_batch_sum_4d(){
+    bench_cudnn_bias_batch_sum_4d(256, 24, 16, 10);
+    bench_cudnn_bias_batch_sum_4d(256, 24, 16, 100);
+    bench_cudnn_bias_batch_sum_4d(256, 24, 16, 1000);
+    //bench_cudnn_bias_batch_sum_4d(256, 24, 16, 10000); // OOM with 4GB
+    std::cout << std::endl;
+}
+
+void bench_bias_batch_sum_4d(size_t D0, size_t D1, size_t D2, size_t D3, size_t repeat = 100) {
+    const size_t SIZE = D0 * D1 * D2 * D3;
+    const size_t S0   = SIZE / D0;
+    const size_t S1   = S0 / D1;
+
+    auto* x_cpu = prepare_cpu(SIZE, 2.0f);
+    auto* y_cpu = prepare_cpu(D1, 3.0f);
+
+    auto* x_gpu = prepare_gpu(SIZE, x_cpu);
+    auto* y_gpu = prepare_gpu(D1, y_cpu);
+
+    egblas_sbias_batch_sum_4d(D0, D1, S0, S1, x_gpu, y_gpu, 1);
+
+    auto t0 = timer::now();
+
+    for(size_t i = 0; i < repeat; ++i){
+        egblas_sbias_batch_sum_4d(D0, D1, S0, S1, x_gpu, y_gpu, 1);
+    }
+
+    report("bias_batch_sum_4d", t0, repeat, SIZE);
+
+    cuda_check(cudaMemcpy(y_cpu, y_gpu, D1 * sizeof(float), cudaMemcpyDeviceToHost));
+
+    release(x_cpu, x_gpu);
+    release(y_cpu, y_gpu);
+}
+
+void bench_bias_batch_sum_4d(){
+    bench_bias_batch_sum_4d(256, 24, 16, 10);
+    bench_bias_batch_sum_4d(256, 24, 16, 100);
+    bench_bias_batch_sum_4d(256, 24, 16, 1000);
+    //bench_bias_batch_sum_4d(256, 24, 16, 10000); // OOM with 4GB
+    std::cout << std::endl;
+}
+
+void bench_bias_batch_mean_4d(size_t D0, size_t D1, size_t D2, size_t D3, size_t repeat = 100) {
+    const size_t SIZE = D0 * D1 * D2 * D3;
+    const size_t S0   = SIZE / D0;
+    const size_t S1   = S0 / D1;
+
+    auto* x_cpu = prepare_cpu(SIZE, 2.0f);
+    auto* y_cpu = prepare_cpu(D1, 3.0f);
+
+    auto* x_gpu = prepare_gpu(SIZE, x_cpu);
+    auto* y_gpu = prepare_gpu(D1, y_cpu);
+
+    egblas_sbias_batch_mean_4d(D0, D1, S0, S1, x_gpu, y_gpu, 1);
+
+    auto t0 = timer::now();
+
+    for(size_t i = 0; i < repeat; ++i){
+        egblas_sbias_batch_mean_4d(D0, D1, S0, S1, x_gpu, y_gpu, 1);
+    }
+
+    report("bias_batch_mean_4d", t0, repeat, SIZE);
+
+    cuda_check(cudaMemcpy(y_cpu, y_gpu, D1 * sizeof(float), cudaMemcpyDeviceToHost));
+
+    release(x_cpu, x_gpu);
+    release(y_cpu, y_gpu);
+}
+
+void bench_bias_batch_mean_4d(){
+    bench_bias_batch_mean_4d(256, 24, 16, 10);
+    bench_bias_batch_mean_4d(256, 24, 16, 100);
+    bench_bias_batch_mean_4d(256, 24, 16, 1000);
+    //bench_bias_batch_mean_4d(256, 24, 16, 10000); // OOM with 4GB
+    std::cout << std::endl;
+}
+
 } // End of anonymous namespace
 
 int main(int argc, char* argv[]){
@@ -1220,5 +1342,8 @@ int main(int argc, char* argv[]){
         bench_bias_batch_sum();
         bench_bias_batch_mean();
         bench_cudnn_bias_batch_sum();
+        bench_bias_batch_sum_4d();
+        bench_bias_batch_mean_4d();
+        bench_cudnn_bias_batch_sum_4d();
     }
 }
