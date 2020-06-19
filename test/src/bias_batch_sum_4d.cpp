@@ -22,7 +22,6 @@ TEST_CASE("bias_batch_sum_4d/s/0", "[float][bias_batch_sum]") {
     const size_t D1 = 3;
     const size_t D2 = 4;
     const size_t D3 = 5;
-    const size_t DIM = D0 * D1 * D2 * D3;
 
     const size_t SIZE = D0 * D1 * D2 * D3;
     const size_t S0   = SIZE / D0;
